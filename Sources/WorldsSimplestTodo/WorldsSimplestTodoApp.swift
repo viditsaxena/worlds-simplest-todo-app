@@ -15,7 +15,7 @@ struct WorldsSimplestTodoApp: App {
                 Button("Show To-Do") {
                     NotificationCenter.default.post(name: .focusTodoInput, object: nil)
                 }
-                .keyboardShortcut("n", modifiers: [.option])
+                .keyboardShortcut("t", modifiers: [.command])
             }
         }
     }

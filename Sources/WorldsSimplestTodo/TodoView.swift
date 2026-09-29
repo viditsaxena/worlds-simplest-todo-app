@@ -57,7 +57,7 @@ struct TodoView: View {
                 .font(.system(size: 20, weight: .medium, design: .rounded))
                 .foregroundStyle(.secondary)
 
-            Text("⌥N brings this window back anytime.")
+            Text("⌘T brings this window back anytime.")
                 .font(.system(size: 13, design: .rounded))
                 .foregroundStyle(.tertiary)
 

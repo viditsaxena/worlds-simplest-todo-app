@@ -29,8 +29,8 @@ final class GlobalHotKey {
 
         let hotKeyID = EventHotKeyID(signature: fourCharacterCode("TODO"), id: 1)
         RegisterEventHotKey(
-            UInt32(kVK_ANSI_N),
-            UInt32(optionKey),
+            UInt32(kVK_ANSI_T),
+            UInt32(cmdKey),
             hotKeyID,
             GetApplicationEventTarget(),
             0,

@@ -2,7 +2,7 @@
 
 A deliberately tiny macOS to-do app.
 
-- Press **⌥N** from anywhere to bring it forward.
+- Press **⌘T** from anywhere to bring it forward.
 - Start typing immediately—no click required.
 - Press **Return** to add an item.
 - Click an item's circle to complete and remove it.
