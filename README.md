@@ -8,6 +8,9 @@ A deliberately tiny macOS to-do app.
 - Click an item's circle to complete and remove it.
 - Unfinished items are saved automatically.
 - Add a date and time in plain English—such as **Call Mum tomorrow at 6 pm**—to schedule a native macOS notification automatically.
+- If the task is still unfinished ten minutes later, the app sends a second notification and bounces its Dock icon while running.
+- Overdue tasks are pinned to the top in red.
+- Reminder notifications include **Done** and **Snooze 10 min** actions.
 
 ## Requirements
 

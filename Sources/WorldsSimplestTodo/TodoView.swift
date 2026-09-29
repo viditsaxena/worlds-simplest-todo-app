@@ -71,18 +71,22 @@ struct TodoView: View {
     }
 
     private var taskList: some View {
-        ScrollView {
-            LazyVStack(spacing: 0) {
-                ForEach(store.items) { item in
-                    taskRow(item)
+        TimelineView(.periodic(from: .now, by: 30)) { timeline in
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ForEach(store.sortedItems(at: timeline.date)) { item in
+                        taskRow(item, at: timeline.date)
+                    }
                 }
+                .padding(.vertical, 8)
             }
-            .padding(.vertical, 8)
         }
     }
 
-    private func taskRow(_ item: TodoItem) -> some View {
-        Button {
+    private func taskRow(_ item: TodoItem, at date: Date) -> some View {
+        let isOverdue = item.isOverdue(at: date)
+
+        return Button {
             withAnimation(.easeOut(duration: 0.18)) {
                 store.complete(item)
             }
@@ -91,28 +95,34 @@ struct TodoView: View {
             HStack(spacing: 14) {
                 Image(systemName: "circle")
                     .font(.system(size: 20, weight: .regular))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(isOverdue ? .red : .secondary)
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(item.title)
                         .font(.system(size: 18, design: .rounded))
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(isOverdue ? .red : .primary)
                         .multilineTextAlignment(.leading)
 
                     if let reminderDate = item.reminderDate {
                         Label {
-                            Text(reminderDate, format: .dateTime
-                                .weekday(.wide)
-                                .month(.abbreviated)
-                                .day()
-                                .hour()
-                                .minute()
-                            )
+                            HStack(spacing: 4) {
+                                if isOverdue {
+                                    Text("Overdue ·")
+                                        .fontWeight(.bold)
+                                }
+                                Text(reminderDate, format: .dateTime
+                                    .weekday(.wide)
+                                    .month(.abbreviated)
+                                    .day()
+                                    .hour()
+                                    .minute()
+                                )
+                            }
                         } icon: {
                             Image(systemName: "bell")
                         }
                         .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(isOverdue ? .red : .secondary)
                     }
                 }
 

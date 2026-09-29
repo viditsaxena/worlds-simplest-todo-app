@@ -1,5 +1,6 @@
 import AppKit
 import Carbon
+import UserNotifications
 
 private let showTodoEvent = Notification.Name("ShowTodoWindow")
 
@@ -57,6 +58,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hotKey: GlobalHotKey?
     private var observer: NSObjectProtocol?
 
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        UNUserNotificationCenter.current().delegate = self
+        ReminderNotification.registerActions()
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
         hotKey = GlobalHotKey()
@@ -93,6 +99,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     deinit {
         if let observer {
             NotificationCenter.default.removeObserver(observer)
+        }
+    }
+}
+
+extension AppDelegate: UNUserNotificationCenterDelegate {
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
+        [.banner, .sound]
+    }
+
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse
+    ) async {
+        guard let rawID = response.notification.request.content.userInfo[
+            ReminderNotification.todoIDKey
+        ] as? String,
+              let id = UUID(uuidString: rawID) else {
+            return
+        }
+
+        let name: Notification.Name?
+        switch response.actionIdentifier {
+        case ReminderNotification.doneAction:
+            name = .completeTodoFromNotification
+        case ReminderNotification.snoozeAction:
+            name = .snoozeTodoFromNotification
+        default:
+            name = nil
+        }
+
+        if let name {
+            await MainActor.run {
+                NotificationCenter.default.post(name: name, object: id)
+            }
         }
     }
 }

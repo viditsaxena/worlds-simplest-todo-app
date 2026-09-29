@@ -29,6 +29,7 @@ enum ReminderParser {
         var title = input
         title.removeSubrange(matchRange)
         title = stripReminderPrefix(from: title)
+        title = stripTrailingConnector(from: title)
 
         if title.isEmpty {
             title = "Reminder"
@@ -43,6 +44,17 @@ enum ReminderParser {
 
         if let prefix = prefixes.first(where: { title.lowercased().hasPrefix($0) }) {
             title.removeFirst(prefix.count)
+        }
+
+        return title.trimmingCharacters(in: separatorCharacters)
+    }
+
+    private static func stripTrailingConnector(from input: String) -> String {
+        let connectors = [" on", " at", " by", " for"]
+        var title = input
+
+        if let connector = connectors.first(where: { title.lowercased().hasSuffix($0) }) {
+            title.removeLast(connector.count)
         }
 
         return title.trimmingCharacters(in: separatorCharacters)

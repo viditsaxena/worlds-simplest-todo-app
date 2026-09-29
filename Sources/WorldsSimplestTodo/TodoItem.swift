@@ -17,4 +17,9 @@ struct TodoItem: Codable, Identifiable, Equatable {
         self.createdAt = createdAt
         self.reminderDate = reminderDate
     }
+
+    func isOverdue(at date: Date = Date()) -> Bool {
+        guard let reminderDate else { return false }
+        return reminderDate < date
+    }
 }
