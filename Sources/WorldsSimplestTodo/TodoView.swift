@@ -57,6 +57,10 @@ struct TodoView: View {
                 .font(.system(size: 20, weight: .medium, design: .rounded))
                 .foregroundStyle(.secondary)
 
+            Text("Try “Call Mum tomorrow at 6 pm”")
+                .font(.system(size: 13, design: .rounded))
+                .foregroundStyle(.tertiary)
+
             Text("⌘T brings this window back anytime.")
                 .font(.system(size: 13, design: .rounded))
                 .foregroundStyle(.tertiary)
@@ -89,10 +93,28 @@ struct TodoView: View {
                     .font(.system(size: 20, weight: .regular))
                     .foregroundStyle(.secondary)
 
-                Text(item.title)
-                    .font(.system(size: 18, design: .rounded))
-                    .foregroundStyle(.primary)
-                    .multilineTextAlignment(.leading)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(item.title)
+                        .font(.system(size: 18, design: .rounded))
+                        .foregroundStyle(.primary)
+                        .multilineTextAlignment(.leading)
+
+                    if let reminderDate = item.reminderDate {
+                        Label {
+                            Text(reminderDate, format: .dateTime
+                                .weekday(.wide)
+                                .month(.abbreviated)
+                                .day()
+                                .hour()
+                                .minute()
+                            )
+                        } icon: {
+                            Image(systemName: "bell")
+                        }
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(.secondary)
+                    }
+                }
 
                 Spacer(minLength: 0)
             }

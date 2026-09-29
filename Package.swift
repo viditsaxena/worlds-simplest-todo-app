@@ -14,7 +14,8 @@ let package = Package(
         .executableTarget(
             name: "WorldsSimplestTodo",
             linkerSettings: [
-                .linkedFramework("Carbon")
+                .linkedFramework("Carbon"),
+                .linkedFramework("UserNotifications")
             ]
         )
     ]

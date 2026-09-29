@@ -7,6 +7,7 @@ A deliberately tiny macOS to-do app.
 - Press **Return** to add an item.
 - Click an item's circle to complete and remove it.
 - Unfinished items are saved automatically.
+- Add a date and time in plain English—such as **Call Mum tomorrow at 6 pm**—to schedule a native macOS notification automatically.
 
 ## Requirements
 

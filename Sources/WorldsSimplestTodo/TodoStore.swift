@@ -6,6 +6,7 @@ final class TodoStore: ObservableObject {
 
     private let defaults: UserDefaults
     private let storageKey = "todo-items"
+    private let reminders = ReminderScheduler()
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -13,16 +14,28 @@ final class TodoStore: ObservableObject {
     }
 
     func add(_ rawTitle: String) {
-        let title = rawTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !title.isEmpty else { return }
+        let parsed = ReminderParser.parse(rawTitle)
+        guard !parsed.title.isEmpty else { return }
 
-        items.append(TodoItem(title: title))
+        let item = TodoItem(
+            title: parsed.title,
+            reminderDate: parsed.reminderDate
+        )
+        items.append(item)
         save()
+
+        Task {
+            await reminders.schedule(for: item)
+        }
     }
 
     func complete(_ item: TodoItem) {
         items.removeAll { $0.id == item.id }
         save()
+
+        Task {
+            await reminders.cancel(for: item)
+        }
     }
 
     private func load() {

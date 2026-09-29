@@ -22,7 +22,8 @@ swiftc \
     Sources/WorldsSimplestTodo/*.swift \
     -framework AppKit \
     -framework Carbon \
-    -framework SwiftUI
+    -framework SwiftUI \
+    -framework UserNotifications
 
 mkdir -p "$APP_DIR/Contents/MacOS"
 mkdir -p "$APP_DIR/Contents/Resources"
