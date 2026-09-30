@@ -2,7 +2,7 @@
 
 A deliberately tiny macOS to-do app.
 
-- Press **⌘T** from anywhere to bring it forward; press it again while the app is frontmost to minimize it.
+- Press **⌥N** from anywhere to bring it forward; press it again while the app is frontmost to minimize it.
 - Start typing immediately—no click required.
 - Use the **One-off** and **Recurring** tabs to keep the two kinds of task separate. The app always opens on One-off.
 - Press **Return** to add an item.

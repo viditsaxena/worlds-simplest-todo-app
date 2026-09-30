@@ -12,10 +12,9 @@ struct WorldsSimplestTodoApp: App {
         .defaultSize(width: 520, height: 640)
         .commands {
             CommandGroup(replacing: .newItem) {
-                Button("Show To-Do") {
+                Button("Toggle To-Do") {
                     NotificationCenter.default.post(name: .toggleTodoWindow, object: nil)
                 }
-                .keyboardShortcut("t", modifiers: [.command])
             }
         }
     }

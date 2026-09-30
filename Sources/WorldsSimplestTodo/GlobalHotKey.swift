@@ -5,6 +5,7 @@ import UserNotifications
 final class GlobalHotKey {
     private var hotKeyRef: EventHotKeyRef?
     private var handlerRef: EventHandlerRef?
+    private var localMonitor: Any?
 
     init() {
         var eventType = EventTypeSpec(
@@ -28,13 +29,30 @@ final class GlobalHotKey {
 
         let hotKeyID = EventHotKeyID(signature: fourCharacterCode("TODO"), id: 1)
         RegisterEventHotKey(
-            UInt32(kVK_ANSI_T),
-            UInt32(cmdKey),
+            UInt32(kVK_ANSI_N),
+            UInt32(optionKey),
             hotKeyID,
             GetApplicationEventTarget(),
             0,
             &hotKeyRef
         )
+
+        // Carbon handles the shortcut globally. The local monitor also catches
+        // synthetic/app-directed key events and prevents Option-N's tilde dead
+        // key from being inserted into the focused text field.
+        localMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+            guard event.keyCode == UInt16(kVK_ANSI_N),
+                  modifiers == .option,
+                  !event.isARepeat else {
+                return event
+            }
+
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .minimizeTodoWindow, object: nil)
+            }
+            return nil
+        }
     }
 
     deinit {
@@ -43,6 +61,9 @@ final class GlobalHotKey {
         }
         if let handlerRef {
             RemoveEventHandler(handlerRef)
+        }
+        if let localMonitor {
+            NSEvent.removeMonitor(localMonitor)
         }
     }
 }
@@ -54,7 +75,7 @@ private func fourCharacterCode(_ string: String) -> OSType {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hotKey: GlobalHotKey?
-    private var observer: NSObjectProtocol?
+    private var observers: [NSObjectProtocol] = []
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         UNUserNotificationCenter.current().delegate = self
@@ -64,7 +85,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
         hotKey = GlobalHotKey()
-        observer = NotificationCenter.default.addObserver(
+        observers.append(NotificationCenter.default.addObserver(
             forName: .toggleTodoWindow,
             object: nil,
             queue: .main
@@ -72,7 +93,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Task { @MainActor in
                 Self.toggleWindow()
             }
-        }
+        })
+        observers.append(NotificationCenter.default.addObserver(
+            forName: .minimizeTodoWindow,
+            object: nil,
+            queue: .main
+        ) { _ in
+            Task { @MainActor in
+                Self.minimizeWindow()
+            }
+        })
 
         Self.showWindow()
     }
@@ -111,8 +141,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    private static func minimizeWindow() {
+        guard let window = NSApp.windows.first(where: { $0.canBecomeKey }),
+              window.isVisible,
+              !window.isMiniaturized else {
+            return
+        }
+        window.miniaturize(nil)
+    }
+
     deinit {
-        if let observer {
+        for observer in observers {
             NotificationCenter.default.removeObserver(observer)
         }
     }
@@ -157,5 +196,6 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
 
 extension Notification.Name {
     static let toggleTodoWindow = Notification.Name("ToggleTodoWindow")
+    static let minimizeTodoWindow = Notification.Name("MinimizeTodoWindow")
     static let focusTodoInput = Notification.Name("FocusTodoInput")
 }
