@@ -50,6 +50,8 @@ struct TodoView: View {
             focusInput()
         }
         .onReceive(NotificationCenter.default.publisher(for: .focusTodoInput)) { _ in
+            selectedTab = .oneOff
+            inputError = nil
             focusInput()
         }
     }

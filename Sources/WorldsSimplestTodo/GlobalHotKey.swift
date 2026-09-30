@@ -2,8 +2,6 @@ import AppKit
 import Carbon
 import UserNotifications
 
-private let showTodoEvent = Notification.Name("ShowTodoWindow")
-
 final class GlobalHotKey {
     private var hotKeyRef: EventHotKeyRef?
     private var handlerRef: EventHandlerRef?
@@ -18,7 +16,7 @@ final class GlobalHotKey {
             GetApplicationEventTarget(),
             { _, _, _ in
                 DispatchQueue.main.async {
-                    NotificationCenter.default.post(name: showTodoEvent, object: nil)
+                    NotificationCenter.default.post(name: .toggleTodoWindow, object: nil)
                 }
                 return noErr
             },
@@ -67,12 +65,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.regular)
         hotKey = GlobalHotKey()
         observer = NotificationCenter.default.addObserver(
-            forName: showTodoEvent,
+            forName: .toggleTodoWindow,
             object: nil,
             queue: .main
         ) { _ in
             Task { @MainActor in
-                Self.showWindow()
+                Self.toggleWindow()
             }
         }
 
@@ -88,11 +86,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private static func showWindow() {
-        NSApp.activate(ignoringOtherApps: true)
-
         if let window = NSApp.windows.first(where: { $0.canBecomeKey }) {
+            if window.isMiniaturized {
+                window.deminiaturize(nil)
+            }
+            NSApp.activate(ignoringOtherApps: true)
             window.makeKeyAndOrderFront(nil)
             NotificationCenter.default.post(name: .focusTodoInput, object: nil)
+        }
+    }
+
+    private static func toggleWindow() {
+        guard let window = NSApp.windows.first(where: { $0.canBecomeKey }) else {
+            return
+        }
+
+        if NSApp.isActive,
+           window.isKeyWindow,
+           window.isVisible,
+           !window.isMiniaturized {
+            window.miniaturize(nil)
+        } else {
+            showWindow()
         }
     }
 
@@ -141,5 +156,6 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
 }
 
 extension Notification.Name {
+    static let toggleTodoWindow = Notification.Name("ToggleTodoWindow")
     static let focusTodoInput = Notification.Name("FocusTodoInput")
 }
