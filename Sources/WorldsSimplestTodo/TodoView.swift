@@ -1,15 +1,38 @@
 import SwiftUI
 
+private enum TodoTab: String, CaseIterable, Identifiable {
+    case oneOff = "One-off"
+    case recurring = "Recurring"
+
+    var id: Self { self }
+}
+
 struct TodoView: View {
     @ObservedObject var store: TodoStore
     @State private var draft = ""
+    @State private var selectedTab: TodoTab = .oneOff
+    @State private var inputError: String?
     @FocusState private var inputIsFocused: Bool
+
+    private var showingRecurring: Bool {
+        selectedTab == .recurring
+    }
 
     var body: some View {
         VStack(spacing: 0) {
+            tabs
             input
 
-            if store.items.isEmpty {
+            if let inputError {
+                Text(inputError)
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundStyle(.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 28)
+                    .padding(.top, 10)
+            }
+
+            if !store.hasItems(recurring: showingRecurring) {
                 emptyState
             } else {
                 taskList
@@ -29,13 +52,36 @@ struct TodoView: View {
         }
     }
 
+    private var tabs: some View {
+        Picker("To-do type", selection: $selectedTab) {
+            ForEach(TodoTab.allCases) { tab in
+                Text(tab.rawValue).tag(tab)
+            }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .padding(.horizontal, 28)
+        .padding(.top, 20)
+        .padding(.bottom, 8)
+        .background(.background)
+        .onChange(of: selectedTab) {
+            inputError = nil
+            focusInput()
+        }
+    }
+
     private var input: some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             Image(systemName: "plus")
                 .font(.system(size: 16, weight: .medium))
                 .foregroundStyle(.secondary)
 
-            TextField("What needs doing?", text: $draft)
+            TextField(
+                showingRecurring
+                    ? "Pay rent on the first of every month at 9 am"
+                    : "What needs doing?",
+                text: $draft
+            )
                 .textFieldStyle(.plain)
                 .font(.system(size: 24, weight: .regular, design: .rounded))
                 .focused($inputIsFocused)
@@ -53,11 +99,15 @@ struct TodoView: View {
         VStack(spacing: 10) {
             Spacer()
 
-            Text("Type. Press return. Done.")
+            Text(showingRecurring ? "Set it once. It comes back." : "Type. Press return. Done.")
                 .font(.system(size: 20, weight: .medium, design: .rounded))
                 .foregroundStyle(.secondary)
 
-            Text("Try “Call Mum tomorrow at 6 pm”")
+            Text(
+                showingRecurring
+                    ? "Try “Pay rent on the first of every month at 9 am”"
+                    : "Try “Call Mum tomorrow at 6 pm”"
+            )
                 .font(.system(size: 13, design: .rounded))
                 .foregroundStyle(.tertiary)
 
@@ -74,7 +124,10 @@ struct TodoView: View {
         TimelineView(.periodic(from: .now, by: 30)) { timeline in
             ScrollView {
                 LazyVStack(spacing: 0) {
-                    ForEach(store.sortedItems(at: timeline.date)) { item in
+                    ForEach(store.sortedItems(
+                        at: timeline.date,
+                        recurring: showingRecurring
+                    )) { item in
                         taskRow(item, at: timeline.date)
                     }
                 }
@@ -103,7 +156,21 @@ struct TodoView: View {
                         .foregroundStyle(isOverdue ? .red : .primary)
                         .multilineTextAlignment(.leading)
 
-                    if let reminderDate = item.reminderDate {
+                    if let recurrence = item.recurrence {
+                        Label {
+                            HStack(spacing: 4) {
+                                if isOverdue {
+                                    Text("Overdue ·")
+                                        .fontWeight(.bold)
+                                }
+                                Text(recurrence.scheduleDescription())
+                            }
+                        } icon: {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                        }
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(isOverdue ? .red : .secondary)
+                    } else if let reminderDate = item.reminderDate {
                         Label {
                             HStack(spacing: 4) {
                                 if isOverdue {
@@ -143,10 +210,23 @@ struct TodoView: View {
             return
         }
 
+        var addedItem: TodoItem?
         withAnimation(.easeOut(duration: 0.18)) {
-            store.add(title)
+            addedItem = store.add(
+                title,
+                requiresRecurrence: showingRecurring
+            )
         }
+
+        guard let addedItem else {
+            inputError = "Include a schedule, such as “on the first of every month at 9 am.”"
+            focusInput()
+            return
+        }
+
+        inputError = nil
         draft = ""
+        selectedTab = addedItem.isRecurring ? .recurring : .oneOff
         focusInput()
     }
 

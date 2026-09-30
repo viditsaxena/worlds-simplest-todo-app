@@ -5,21 +5,28 @@ struct TodoItem: Codable, Identifiable, Equatable {
     let title: String
     let createdAt: Date
     let reminderDate: Date?
+    let recurrence: RecurrenceRule?
 
     init(
         id: UUID = UUID(),
         title: String,
         createdAt: Date = Date(),
-        reminderDate: Date? = nil
+        reminderDate: Date? = nil,
+        recurrence: RecurrenceRule? = nil
     ) {
         self.id = id
         self.title = title
         self.createdAt = createdAt
         self.reminderDate = reminderDate
+        self.recurrence = recurrence
     }
 
     func isOverdue(at date: Date = Date()) -> Bool {
         guard let reminderDate else { return false }
         return reminderDate < date
+    }
+
+    var isRecurring: Bool {
+        recurrence != nil
     }
 }

@@ -36,38 +36,77 @@ actor ReminderScheduler {
             return
         }
 
-        let followUpDate = reminderDate.addingTimeInterval(10 * 60)
         let now = Date()
-        guard followUpDate > now else { return }
 
         do {
             let authorized = try await center.requestAuthorization(options: [.alert, .sound])
             guard authorized else { return }
 
-            if reminderDate > now {
-                let dueRequest = request(
+            if let recurrence = item.recurrence {
+                try await center.add(repeatingRequest(
                     for: item,
-                    at: reminderDate,
+                    components: recurrence.dueComponents(),
                     title: "To-do reminder",
-                    identifierSuffix: "due"
-                )
-                try await center.add(dueRequest)
+                    identifierSuffix: "recurring.due"
+                ))
+                try await center.add(repeatingRequest(
+                    for: item,
+                    components: recurrence.followUpComponents(),
+                    title: "Still unfinished",
+                    identifierSuffix: "recurring.follow-up"
+                ))
+
+                if reminderDate > now,
+                   !recurrence.matchesScheduledTime(reminderDate) {
+                    try await addOneOffPair(
+                        for: item,
+                        at: reminderDate,
+                        identifierPrefix: "override"
+                    )
+                }
+                return
             }
 
-            let followUpRequest = request(
-                for: item,
-                at: followUpDate,
-                title: "Still unfinished",
-                identifierSuffix: "follow-up"
-            )
-            try await center.add(followUpRequest)
+            let followUpDate = reminderDate.addingTimeInterval(10 * 60)
+            guard followUpDate > now else { return }
+            try await addOneOffPair(for: item, at: reminderDate, identifierPrefix: nil)
         } catch {
             // The task still exists even if notification permission is unavailable.
         }
     }
 
     func cancel(for item: TodoItem) {
-        center.removePendingNotificationRequests(withIdentifiers: identifiers(for: item.id))
+        let requestIdentifiers = identifiers(for: item.id)
+        center.removePendingNotificationRequests(withIdentifiers: requestIdentifiers)
+        center.removeDeliveredNotifications(withIdentifiers: requestIdentifiers)
+    }
+
+    private func addOneOffPair(
+        for item: TodoItem,
+        at reminderDate: Date,
+        identifierPrefix: String?
+    ) async throws {
+        let now = Date()
+        let prefix = identifierPrefix.map { "\($0)." } ?? ""
+
+        if reminderDate > now {
+            try await center.add(request(
+                for: item,
+                at: reminderDate,
+                title: "To-do reminder",
+                identifierSuffix: "\(prefix)due"
+            ))
+        }
+
+        let followUpDate = reminderDate.addingTimeInterval(10 * 60)
+        if followUpDate > now {
+            try await center.add(request(
+                for: item,
+                at: followUpDate,
+                title: "Still unfinished",
+                identifierSuffix: "\(prefix)follow-up"
+            ))
+        }
     }
 
     private func request(
@@ -100,11 +139,46 @@ actor ReminderScheduler {
         )
     }
 
+    private func repeatingRequest(
+        for item: TodoItem,
+        components: DateComponents,
+        title: String,
+        identifierSuffix: String
+    ) -> UNNotificationRequest {
+        let content = notificationContent(for: item, title: title)
+        let trigger = UNCalendarNotificationTrigger(
+            dateMatching: components,
+            repeats: true
+        )
+        return UNNotificationRequest(
+            identifier: "\(item.id.uuidString).\(identifierSuffix)",
+            content: content,
+            trigger: trigger
+        )
+    }
+
+    private func notificationContent(
+        for item: TodoItem,
+        title: String
+    ) -> UNMutableNotificationContent {
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = item.title
+        content.sound = .default
+        content.categoryIdentifier = ReminderNotification.category
+        content.userInfo = [ReminderNotification.todoIDKey: item.id.uuidString]
+        return content
+    }
+
     private func identifiers(for id: UUID) -> [String] {
         [
             id.uuidString,
             "\(id.uuidString).due",
-            "\(id.uuidString).follow-up"
+            "\(id.uuidString).follow-up",
+            "\(id.uuidString).recurring.due",
+            "\(id.uuidString).recurring.follow-up",
+            "\(id.uuidString).override.due",
+            "\(id.uuidString).override.follow-up"
         ]
     }
 }

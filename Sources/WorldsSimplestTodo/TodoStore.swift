@@ -24,13 +24,18 @@ final class TodoStore: ObservableObject {
         }
     }
 
-    func add(_ rawTitle: String) {
+    @discardableResult
+    func add(_ rawTitle: String, requiresRecurrence: Bool = false) -> TodoItem? {
         let parsed = ReminderParser.parse(rawTitle)
-        guard !parsed.title.isEmpty else { return }
+        guard !parsed.title.isEmpty,
+              !requiresRecurrence || parsed.recurrence != nil else {
+            return nil
+        }
 
         let item = TodoItem(
             title: parsed.title,
-            reminderDate: parsed.reminderDate
+            reminderDate: parsed.reminderDate,
+            recurrence: parsed.recurrence
         )
         items.append(item)
         save()
@@ -39,21 +44,42 @@ final class TodoStore: ObservableObject {
             await reminders.schedule(for: item)
         }
         scheduleDockBounce(for: item)
+        return item
     }
 
     func complete(_ item: TodoItem) {
-        items.removeAll { $0.id == item.id }
-        save()
+        guard let index = items.firstIndex(where: { $0.id == item.id }) else { return }
 
-        Task {
-            await reminders.cancel(for: item)
-        }
         attentionTasks[item.id]?.cancel()
         attentionTasks[item.id] = nil
+
+        if let recurrence = item.recurrence {
+            let nextDate = recurrence.nextDate(after: Date())
+            let advanced = TodoItem(
+                id: item.id,
+                title: item.title,
+                createdAt: item.createdAt,
+                reminderDate: nextDate,
+                recurrence: recurrence
+            )
+            items[index] = advanced
+            save()
+            Task {
+                await reminders.cancel(for: item)
+                await reminders.schedule(for: advanced)
+            }
+            scheduleDockBounce(for: advanced)
+        } else {
+            items.remove(at: index)
+            save()
+            Task {
+                await reminders.cancel(for: item)
+            }
+        }
     }
 
-    func sortedItems(at date: Date) -> [TodoItem] {
-        items.sorted { first, second in
+    func sortedItems(at date: Date, recurring: Bool) -> [TodoItem] {
+        items.filter { $0.isRecurring == recurring }.sorted { first, second in
             let firstIsOverdue = first.isOverdue(at: date)
             let secondIsOverdue = second.isOverdue(at: date)
 
@@ -62,6 +88,10 @@ final class TodoStore: ObservableObject {
             }
             return first.createdAt < second.createdAt
         }
+    }
+
+    func hasItems(recurring: Bool) -> Bool {
+        items.contains { $0.isRecurring == recurring }
     }
 
     private func load() {
@@ -118,7 +148,8 @@ final class TodoStore: ObservableObject {
             id: current.id,
             title: current.title,
             createdAt: current.createdAt,
-            reminderDate: Date().addingTimeInterval(10 * 60)
+            reminderDate: Date().addingTimeInterval(10 * 60),
+            recurrence: current.recurrence
         )
         items[index] = snoozed
         save()
@@ -130,11 +161,16 @@ final class TodoStore: ObservableObject {
         scheduleDockBounce(for: snoozed)
     }
 
-    private func scheduleDockBounce(for item: TodoItem) {
+    private func scheduleDockBounce(for item: TodoItem, after date: Date? = nil) {
         attentionTasks[item.id]?.cancel()
         guard let reminderDate = item.reminderDate else { return }
 
-        let followUpDate = reminderDate.addingTimeInterval(10 * 60)
+        let followUpDate: Date
+        if let date, let recurrence = item.recurrence {
+            followUpDate = recurrence.nextDate(after: date).addingTimeInterval(10 * 60)
+        } else {
+            followUpDate = reminderDate.addingTimeInterval(10 * 60)
+        }
         let delay = max(0, followUpDate.timeIntervalSinceNow)
         attentionTasks[item.id] = Task { [weak self] in
             do {
@@ -149,6 +185,10 @@ final class TodoStore: ObservableObject {
             }
             NSApp.requestUserAttention(.criticalRequest)
             self.attentionTasks[item.id] = nil
+
+            if item.isRecurring {
+                self.scheduleDockBounce(for: item, after: followUpDate)
+            }
         }
     }
 

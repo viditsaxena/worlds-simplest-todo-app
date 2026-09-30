@@ -4,6 +4,7 @@ A deliberately tiny macOS to-do app.
 
 - Press **⌘T** from anywhere to bring it forward.
 - Start typing immediately—no click required.
+- Use the **One-off** and **Recurring** tabs to keep the two kinds of task separate. The app always opens on One-off.
 - Press **Return** to add an item.
 - Click an item's circle to complete and remove it.
 - Unfinished items are saved automatically.
@@ -11,6 +12,8 @@ A deliberately tiny macOS to-do app.
 - If the task is still unfinished ten minutes later, the app sends a second notification and bounces its Dock icon while running.
 - Overdue tasks are pinned to the top in red.
 - Reminder notifications include **Done** and **Snooze 10 min** actions.
+- Create monthly reminders in plain English, such as **Pay rent on the first of every month at 9 am**. If no time is included, the app uses 9:00 AM.
+- Completing a recurring item advances it to the next month instead of deleting it.
 
 ## Requirements
 
