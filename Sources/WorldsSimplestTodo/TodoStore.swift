@@ -7,12 +7,16 @@ final class TodoStore: ObservableObject {
 
     private let defaults: UserDefaults
     private let storageKey = "todo-items"
-    private let reminders = ReminderScheduler()
+    private let reminders: any ReminderScheduling
     private var observers: [NSObjectProtocol] = []
     private var attentionTasks: [UUID: Task<Void, Never>] = [:]
 
-    init(defaults: UserDefaults = .standard) {
+    init(
+        defaults: UserDefaults = .standard,
+        reminders: any ReminderScheduling = ReminderScheduler()
+    ) {
         self.defaults = defaults
+        self.reminders = reminders
         load()
         observeNotificationActions()
         items.forEach { item in
@@ -60,7 +64,8 @@ final class TodoStore: ObservableObject {
                 title: item.title,
                 createdAt: item.createdAt,
                 reminderDate: nextDate,
-                recurrence: recurrence
+                recurrence: recurrence,
+                hiddenUntil: nextDate
             )
             items[index] = advanced
             save()
@@ -79,7 +84,9 @@ final class TodoStore: ObservableObject {
     }
 
     func sortedItems(at date: Date, recurring: Bool) -> [TodoItem] {
-        items.filter { $0.isRecurring == recurring }.sorted { first, second in
+        items.filter {
+            $0.isRecurring == recurring && $0.isVisible(at: date)
+        }.sorted { first, second in
             let firstIsOverdue = first.isOverdue(at: date)
             let secondIsOverdue = second.isOverdue(at: date)
 
@@ -90,8 +97,10 @@ final class TodoStore: ObservableObject {
         }
     }
 
-    func hasItems(recurring: Bool) -> Bool {
-        items.contains { $0.isRecurring == recurring }
+    func hasItems(recurring: Bool, at date: Date) -> Bool {
+        items.contains {
+            $0.isRecurring == recurring && $0.isVisible(at: date)
+        }
     }
 
     private func load() {
@@ -149,7 +158,8 @@ final class TodoStore: ObservableObject {
             title: current.title,
             createdAt: current.createdAt,
             reminderDate: Date().addingTimeInterval(10 * 60),
-            recurrence: current.recurrence
+            recurrence: current.recurrence,
+            hiddenUntil: nil
         )
         items[index] = snoozed
         save()

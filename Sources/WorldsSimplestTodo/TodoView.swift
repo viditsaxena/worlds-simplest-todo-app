@@ -32,10 +32,12 @@ struct TodoView: View {
                     .padding(.top, 10)
             }
 
-            if !store.hasItems(recurring: showingRecurring) {
-                emptyState
-            } else {
-                taskList
+            TimelineView(.periodic(from: .now, by: 30)) { timeline in
+                if !store.hasItems(recurring: showingRecurring, at: timeline.date) {
+                    emptyState
+                } else {
+                    taskList(at: timeline.date)
+                }
             }
         }
         .frame(minWidth: 440, idealWidth: 520, minHeight: 480, idealHeight: 640)
@@ -120,19 +122,17 @@ struct TodoView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private var taskList: some View {
-        TimelineView(.periodic(from: .now, by: 30)) { timeline in
-            ScrollView {
-                LazyVStack(spacing: 0) {
-                    ForEach(store.sortedItems(
-                        at: timeline.date,
-                        recurring: showingRecurring
-                    )) { item in
-                        taskRow(item, at: timeline.date)
-                    }
+    private func taskList(at date: Date) -> some View {
+        ScrollView {
+            LazyVStack(spacing: 0) {
+                ForEach(store.sortedItems(
+                    at: date,
+                    recurring: showingRecurring
+                )) { item in
+                    taskRow(item, at: date)
                 }
-                .padding(.vertical, 8)
             }
+            .padding(.vertical, 8)
         }
     }
 

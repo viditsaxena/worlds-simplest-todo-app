@@ -1,6 +1,11 @@
 import Foundation
 import UserNotifications
 
+protocol ReminderScheduling: Sendable {
+    func schedule(for item: TodoItem) async
+    func cancel(for item: TodoItem) async
+}
+
 enum ReminderNotification {
     static let category = "TODO_REMINDER"
     static let doneAction = "TODO_DONE"
@@ -28,7 +33,7 @@ enum ReminderNotification {
     }
 }
 
-actor ReminderScheduler {
+actor ReminderScheduler: ReminderScheduling {
     private let center = UNUserNotificationCenter.current()
 
     func schedule(for item: TodoItem) async {
@@ -75,7 +80,7 @@ actor ReminderScheduler {
         }
     }
 
-    func cancel(for item: TodoItem) {
+    func cancel(for item: TodoItem) async {
         let requestIdentifiers = identifiers(for: item.id)
         center.removePendingNotificationRequests(withIdentifiers: requestIdentifiers)
         center.removeDeliveredNotifications(withIdentifiers: requestIdentifiers)
