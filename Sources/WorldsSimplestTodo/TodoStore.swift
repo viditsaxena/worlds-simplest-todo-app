@@ -65,7 +65,7 @@ final class TodoStore: ObservableObject {
                 createdAt: item.createdAt,
                 reminderDate: nextDate,
                 recurrence: recurrence,
-                hiddenUntil: nextDate
+                hiddenUntil: nil
             )
             items[index] = advanced
             save()

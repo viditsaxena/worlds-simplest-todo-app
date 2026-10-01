@@ -34,6 +34,9 @@ struct TodoItem: Codable, Identifiable, Equatable {
     }
 
     func isVisible(at date: Date = Date()) -> Bool {
+        if isRecurring {
+            return true
+        }
         guard let hiddenUntil else { return true }
         return hiddenUntil <= date
     }
