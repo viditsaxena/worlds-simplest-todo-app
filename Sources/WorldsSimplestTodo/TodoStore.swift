@@ -93,7 +93,7 @@ final class TodoStore: ObservableObject {
             if firstIsOverdue != secondIsOverdue {
                 return firstIsOverdue
             }
-            return first.createdAt < second.createdAt
+            return first.createdAt > second.createdAt
         }
     }
 
