@@ -14,6 +14,7 @@ A deliberately tiny macOS to-do app.
 - Reminder notifications include **Done** and **Snooze 10 min** actions.
 - Create monthly reminders in plain English, such as **Pay rent on the first of every month at 9 am**. If no time is included, the app uses 9:00 AM.
 - Completing a recurring item keeps it visible in black and advances its reminder to the next occurrence.
+- Use the trash button beside a recurring item to delete the reminder completely.
 
 ## Requirements
 

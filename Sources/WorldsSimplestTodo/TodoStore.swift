@@ -83,6 +83,19 @@ final class TodoStore: ObservableObject {
         }
     }
 
+    func delete(_ item: TodoItem) {
+        guard let index = items.firstIndex(where: { $0.id == item.id }) else { return }
+
+        attentionTasks[item.id]?.cancel()
+        attentionTasks[item.id] = nil
+        items.remove(at: index)
+        save()
+
+        Task {
+            await reminders.cancel(for: item)
+        }
+    }
+
     func sortedItems(at date: Date, recurring: Bool) -> [TodoItem] {
         items.filter {
             $0.isRecurring == recurring && $0.isVisible(at: date)

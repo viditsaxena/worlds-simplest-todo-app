@@ -141,68 +141,89 @@ struct TodoView: View {
     private func taskRow(_ item: TodoItem, at date: Date) -> some View {
         let isOverdue = item.isOverdue(at: date)
 
-        return Button {
-            withAnimation(.easeOut(duration: 0.18)) {
-                store.complete(item)
-            }
-            focusInput()
-        } label: {
-            HStack(spacing: 14) {
-                Image(systemName: "circle")
-                    .font(.system(size: 20, weight: .regular))
-                    .foregroundStyle(isOverdue ? .red : .secondary)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(item.title)
-                        .font(.system(size: 18, design: .rounded))
-                        .foregroundStyle(isOverdue ? .red : .primary)
-                        .multilineTextAlignment(.leading)
-
-                    if let recurrence = item.recurrence {
-                        Label {
-                            HStack(spacing: 4) {
-                                if isOverdue {
-                                    Text("Overdue ·")
-                                        .fontWeight(.bold)
-                                }
-                                Text(recurrence.scheduleDescription())
-                            }
-                        } icon: {
-                            Image(systemName: "arrow.triangle.2.circlepath")
-                        }
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundStyle(isOverdue ? .red : .secondary)
-                    } else if let reminderDate = item.reminderDate {
-                        Label {
-                            HStack(spacing: 4) {
-                                if isOverdue {
-                                    Text("Overdue ·")
-                                        .fontWeight(.bold)
-                                }
-                                Text(reminderDate, format: .dateTime
-                                    .weekday(.wide)
-                                    .month(.abbreviated)
-                                    .day()
-                                    .hour()
-                                    .minute()
-                                )
-                            }
-                        } icon: {
-                            Image(systemName: "bell")
-                        }
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundStyle(isOverdue ? .red : .secondary)
-                    }
+        return HStack(spacing: 0) {
+            Button {
+                withAnimation(.easeOut(duration: 0.18)) {
+                    store.complete(item)
                 }
+                focusInput()
+            } label: {
+                HStack(spacing: 14) {
+                    Image(systemName: "circle")
+                        .font(.system(size: 20, weight: .regular))
+                        .foregroundStyle(isOverdue ? .red : .secondary)
 
-                Spacer(minLength: 0)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(item.title)
+                            .font(.system(size: 18, design: .rounded))
+                            .foregroundStyle(isOverdue ? .red : .primary)
+                            .multilineTextAlignment(.leading)
+
+                        if let recurrence = item.recurrence {
+                            Label {
+                                HStack(spacing: 4) {
+                                    if isOverdue {
+                                        Text("Overdue ·")
+                                            .fontWeight(.bold)
+                                    }
+                                    Text(recurrence.scheduleDescription())
+                                }
+                            } icon: {
+                                Image(systemName: "arrow.triangle.2.circlepath")
+                            }
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .foregroundStyle(isOverdue ? .red : .secondary)
+                        } else if let reminderDate = item.reminderDate {
+                            Label {
+                                HStack(spacing: 4) {
+                                    if isOverdue {
+                                        Text("Overdue ·")
+                                            .fontWeight(.bold)
+                                    }
+                                    Text(reminderDate, format: .dateTime
+                                        .weekday(.wide)
+                                        .month(.abbreviated)
+                                        .day()
+                                        .hour()
+                                        .minute()
+                                    )
+                                }
+                            } icon: {
+                                Image(systemName: "bell")
+                            }
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .foregroundStyle(isOverdue ? .red : .secondary)
+                        }
+                    }
+
+                    Spacer(minLength: 0)
+                }
+                .padding(.leading, 28)
+                .padding(.vertical, 15)
+                .contentShape(Rectangle())
             }
-            .padding(.horizontal, 28)
-            .padding(.vertical, 15)
-            .contentShape(Rectangle())
+            .buttonStyle(.plain)
+            .accessibilityLabel("Complete " + item.title)
+
+            if item.isRecurring {
+                Button {
+                    withAnimation(.easeOut(duration: 0.18)) {
+                        store.delete(item)
+                    }
+                    focusInput()
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .padding(.trailing, 16)
+                .accessibilityLabel("Delete " + item.title)
+                .help("Delete recurring reminder")
+            }
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Complete \(item.title)")
     }
 
     private func addTask() {
