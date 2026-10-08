@@ -1,8 +1,8 @@
 import SwiftUI
 
 private enum TodoTab: String, CaseIterable, Identifiable {
-    case oneOff = "One-off"
     case today = "Today"
+    case oneOff = "One-off"
     case recurring = "Recurring"
 
     var id: Self { self }
@@ -11,7 +11,7 @@ private enum TodoTab: String, CaseIterable, Identifiable {
 struct TodoView: View {
     @ObservedObject var store: TodoStore
     @State private var draft = ""
-    @State private var selectedTab: TodoTab = .oneOff
+    @State private var selectedTab: TodoTab = .today
     @State private var inputError: String?
     @State private var celebrationID: Int?
     @State private var celebrationSequence = 0
@@ -69,7 +69,7 @@ struct TodoView: View {
             focusInput()
         }
         .onReceive(NotificationCenter.default.publisher(for: .focusTodoInput)) { _ in
-            selectedTab = .oneOff
+            selectedTab = .today
             inputError = nil
             focusInput()
         }
