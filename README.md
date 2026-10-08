@@ -4,7 +4,8 @@ A deliberately tiny macOS to-do app.
 
 - Press **⌥N** from anywhere to bring it forward; press it again while the app is frontmost to minimize it.
 - Start typing immediately—no click required.
-- Use the **One-off** and **Recurring** tabs to keep the two kinds of task separate. The app always opens on One-off.
+- Use the **One-off**, **Today**, and **Recurring** tabs to keep the different kinds of task separate. The app always opens on One-off.
+- Move a one-off task into Today with the sun button. Move it back with the return arrow.
 - Press **Return** to add an item.
 - Click a one-off item's circle to complete and remove it.
 - Unfinished items are saved automatically.

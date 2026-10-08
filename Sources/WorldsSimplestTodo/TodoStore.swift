@@ -29,7 +29,11 @@ final class TodoStore: ObservableObject {
     }
 
     @discardableResult
-    func add(_ rawTitle: String, requiresRecurrence: Bool = false) -> TodoItem? {
+    func add(
+        _ rawTitle: String,
+        requiresRecurrence: Bool = false,
+        isToday: Bool = false
+    ) -> TodoItem? {
         let parsed = ReminderParser.parse(rawTitle)
         guard !parsed.title.isEmpty,
               !requiresRecurrence || parsed.recurrence != nil else {
@@ -39,7 +43,8 @@ final class TodoStore: ObservableObject {
         let item = TodoItem(
             title: parsed.title,
             reminderDate: parsed.reminderDate,
-            recurrence: parsed.recurrence
+            recurrence: parsed.recurrence,
+            isToday: isToday && parsed.recurrence == nil
         )
         items.append(item)
         save()
@@ -65,7 +70,8 @@ final class TodoStore: ObservableObject {
                 createdAt: item.createdAt,
                 reminderDate: nextDate,
                 recurrence: recurrence,
-                hiddenUntil: nil
+                hiddenUntil: nil,
+                isToday: false
             )
             items[index] = advanced
             save()
@@ -96,9 +102,20 @@ final class TodoStore: ObservableObject {
         }
     }
 
-    func sortedItems(at date: Date, recurring: Bool) -> [TodoItem] {
+    func moveToToday(_ item: TodoItem) {
+        setToday(true, for: item)
+    }
+
+    func moveToOneOff(_ item: TodoItem) {
+        setToday(false, for: item)
+    }
+
+    func sortedItems(at date: Date, recurring: Bool, today: Bool = false) -> [TodoItem] {
         items.filter {
-            $0.isRecurring == recurring && $0.isVisible(at: date)
+            let isInSelectedList = recurring
+                ? $0.isRecurring
+                : !$0.isRecurring && $0.isToday == today
+            return isInSelectedList && $0.isVisible(at: date)
         }.sorted { first, second in
             let firstIsOverdue = first.isOverdue(at: date)
             let secondIsOverdue = second.isOverdue(at: date)
@@ -110,10 +127,31 @@ final class TodoStore: ObservableObject {
         }
     }
 
-    func hasItems(recurring: Bool, at date: Date) -> Bool {
+    func hasItems(recurring: Bool, today: Bool = false, at date: Date) -> Bool {
         items.contains {
-            $0.isRecurring == recurring && $0.isVisible(at: date)
+            let isInSelectedList = recurring
+                ? $0.isRecurring
+                : !$0.isRecurring && $0.isToday == today
+            return isInSelectedList && $0.isVisible(at: date)
         }
+    }
+
+    private func setToday(_ isToday: Bool, for item: TodoItem) {
+        guard !item.isRecurring,
+              let index = items.firstIndex(where: { $0.id == item.id }) else {
+            return
+        }
+
+        items[index] = TodoItem(
+            id: item.id,
+            title: item.title,
+            createdAt: item.createdAt,
+            reminderDate: item.reminderDate,
+            recurrence: item.recurrence,
+            hiddenUntil: item.hiddenUntil,
+            isToday: isToday
+        )
+        save()
     }
 
     private func load() {
@@ -172,7 +210,8 @@ final class TodoStore: ObservableObject {
             createdAt: current.createdAt,
             reminderDate: Date().addingTimeInterval(10 * 60),
             recurrence: current.recurrence,
-            hiddenUntil: nil
+            hiddenUntil: nil,
+            isToday: current.isToday
         )
         items[index] = snoozed
         save()

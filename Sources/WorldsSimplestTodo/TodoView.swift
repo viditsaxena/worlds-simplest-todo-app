@@ -2,6 +2,7 @@ import SwiftUI
 
 private enum TodoTab: String, CaseIterable, Identifiable {
     case oneOff = "One-off"
+    case today = "Today"
     case recurring = "Recurring"
 
     var id: Self { self }
@@ -16,6 +17,10 @@ struct TodoView: View {
 
     private var showingRecurring: Bool {
         selectedTab == .recurring
+    }
+
+    private var showingToday: Bool {
+        selectedTab == .today
     }
 
     var body: some View {
@@ -33,7 +38,11 @@ struct TodoView: View {
             }
 
             TimelineView(.periodic(from: .now, by: 30)) { timeline in
-                if !store.hasItems(recurring: showingRecurring, at: timeline.date) {
+                if !store.hasItems(
+                    recurring: showingRecurring,
+                    today: showingToday,
+                    at: timeline.date
+                ) {
                     emptyState
                 } else {
                     taskList(at: timeline.date)
@@ -81,9 +90,7 @@ struct TodoView: View {
                 .foregroundStyle(.secondary)
 
             TextField(
-                showingRecurring
-                    ? "Pay rent on the first of every month at 9 am"
-                    : "What needs doing?",
+                inputPlaceholder,
                 text: $draft
             )
                 .textFieldStyle(.plain)
@@ -103,15 +110,11 @@ struct TodoView: View {
         VStack(spacing: 10) {
             Spacer()
 
-            Text(showingRecurring ? "Set it once. It comes back." : "Type. Press return. Done.")
+            Text(emptyStateTitle)
                 .font(.system(size: 20, weight: .medium, design: .rounded))
                 .foregroundStyle(.secondary)
 
-            Text(
-                showingRecurring
-                    ? "Try “Pay rent on the first of every month at 9 am”"
-                    : "Try “Call Mum tomorrow at 6 pm”"
-            )
+            Text(emptyStateSuggestion)
                 .font(.system(size: 13, design: .rounded))
                 .foregroundStyle(.tertiary)
 
@@ -129,7 +132,8 @@ struct TodoView: View {
             LazyVStack(spacing: 0) {
                 ForEach(store.sortedItems(
                     at: date,
-                    recurring: showingRecurring
+                    recurring: showingRecurring,
+                    today: showingToday
                 )) { item in
                     taskRow(item, at: date)
                 }
@@ -222,7 +226,74 @@ struct TodoView: View {
                 .padding(.trailing, 16)
                 .accessibilityLabel("Delete " + item.title)
                 .help("Delete recurring reminder")
+            } else if selectedTab == .oneOff {
+                Button {
+                    withAnimation(.easeOut(duration: 0.18)) {
+                        store.moveToToday(item)
+                    }
+                    focusInput()
+                } label: {
+                    Image(systemName: "sun.max.fill")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .padding(.trailing, 16)
+                .accessibilityLabel("Move " + item.title + " to Today")
+                .help("Move to Today")
+            } else if selectedTab == .today {
+                Button {
+                    withAnimation(.easeOut(duration: 0.18)) {
+                        store.moveToOneOff(item)
+                    }
+                    focusInput()
+                } label: {
+                    Image(systemName: "arrow.uturn.backward")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .padding(.trailing, 16)
+                .accessibilityLabel("Move " + item.title + " back to One-off")
+                .help("Move back to One-off")
             }
+        }
+    }
+
+    private var inputPlaceholder: String {
+        switch selectedTab {
+        case .oneOff:
+            "What needs doing?"
+        case .today:
+            "What are you working on today?"
+        case .recurring:
+            "Pay rent on the first of every month at 9 am"
+        }
+    }
+
+    private var emptyStateTitle: String {
+        switch selectedTab {
+        case .oneOff:
+            "Type. Press return. Done."
+        case .today:
+            "Keep this list small."
+        case .recurring:
+            "Set it once. It comes back."
+        }
+    }
+
+    private var emptyStateSuggestion: String {
+        switch selectedTab {
+        case .oneOff:
+            "Try “Call Mum tomorrow at 6 pm”"
+        case .today:
+            "Move a task here from One-off."
+        case .recurring:
+            "Try “Pay rent on the first of every month at 9 am”"
         }
     }
 
@@ -237,7 +308,8 @@ struct TodoView: View {
         withAnimation(.easeOut(duration: 0.18)) {
             addedItem = store.add(
                 title,
-                requiresRecurrence: showingRecurring
+                requiresRecurrence: showingRecurring,
+                isToday: showingToday
             )
         }
 
@@ -249,7 +321,11 @@ struct TodoView: View {
 
         inputError = nil
         draft = ""
-        selectedTab = addedItem.isRecurring ? .recurring : .oneOff
+        if addedItem.isRecurring {
+            selectedTab = .recurring
+        } else {
+            selectedTab = addedItem.isToday ? .today : .oneOff
+        }
         focusInput()
     }
 
