@@ -8,6 +8,7 @@ A deliberately tiny macOS to-do app.
 - Move a one-off task into Today with the sun button. Move it back with the return arrow.
 - Press **Return** to add an item.
 - Click a one-off item's circle to complete and remove it.
+- Completing a task triggers a short fireworks celebration.
 - Unfinished items are saved automatically.
 - Add a date and time in plain English—such as **Call Mum tomorrow at 6 pm**—to schedule a native macOS notification automatically.
 - If the task is still unfinished ten minutes later, the app sends a second notification and bounces its Dock icon while running.

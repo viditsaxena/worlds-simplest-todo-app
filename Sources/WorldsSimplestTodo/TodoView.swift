@@ -13,6 +13,8 @@ struct TodoView: View {
     @State private var draft = ""
     @State private var selectedTab: TodoTab = .oneOff
     @State private var inputError: String?
+    @State private var celebrationID: Int?
+    @State private var celebrationSequence = 0
     @FocusState private var inputIsFocused: Bool
 
     private var showingRecurring: Bool {
@@ -24,29 +26,37 @@ struct TodoView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            tabs
-            input
+        ZStack {
+            VStack(spacing: 0) {
+                tabs
+                input
 
-            if let inputError {
-                Text(inputError)
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundStyle(.red)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 28)
-                    .padding(.top, 10)
+                if let inputError {
+                    Text(inputError)
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(.red)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 28)
+                        .padding(.top, 10)
+                }
+
+                TimelineView(.periodic(from: .now, by: 30)) { timeline in
+                    if !store.hasItems(
+                        recurring: showingRecurring,
+                        today: showingToday,
+                        at: timeline.date
+                    ) {
+                        emptyState
+                    } else {
+                        taskList(at: timeline.date)
+                    }
+                }
             }
 
-            TimelineView(.periodic(from: .now, by: 30)) { timeline in
-                if !store.hasItems(
-                    recurring: showingRecurring,
-                    today: showingToday,
-                    at: timeline.date
-                ) {
-                    emptyState
-                } else {
-                    taskList(at: timeline.date)
-                }
+            if let celebrationID {
+                CelebrationOverlay(burstID: celebrationID)
+                    .id(celebrationID)
+                    .transition(.opacity)
             }
         }
         .frame(minWidth: 440, idealWidth: 520, minHeight: 480, idealHeight: 640)
@@ -150,6 +160,7 @@ struct TodoView: View {
                 withAnimation(.easeOut(duration: 0.18)) {
                     store.complete(item)
                 }
+                celebrate()
                 focusInput()
             } label: {
                 HStack(spacing: 14) {
@@ -332,6 +343,22 @@ struct TodoView: View {
     private func focusInput() {
         DispatchQueue.main.async {
             inputIsFocused = true
+        }
+    }
+
+    private func celebrate() {
+        celebrationSequence += 1
+        let currentID = celebrationSequence
+        withAnimation(.easeOut(duration: 0.12)) {
+            celebrationID = currentID
+        }
+
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(1.35))
+            guard celebrationID == currentID else { return }
+            withAnimation(.easeOut(duration: 0.18)) {
+                celebrationID = nil
+            }
         }
     }
 }
