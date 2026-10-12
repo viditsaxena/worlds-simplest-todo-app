@@ -2,10 +2,15 @@ import SwiftUI
 
 @main
 struct WorldsSimplestTodoApp: App {
+#if os(macOS)
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+#elseif os(iOS)
+    @UIApplicationDelegateAdaptor(MobileAppDelegate.self) private var appDelegate
+#endif
     @StateObject private var store = TodoStore()
 
     var body: some Scene {
+#if os(macOS)
         WindowGroup("World's Simplest To-Do") {
             TodoView(store: store)
         }
@@ -17,5 +22,10 @@ struct WorldsSimplestTodoApp: App {
                 }
             }
         }
+#else
+        WindowGroup {
+            TodoView(store: store)
+        }
+#endif
     }
 }

@@ -1,3 +1,4 @@
+#if os(macOS)
 import AppKit
 import Carbon
 import UserNotifications
@@ -169,6 +170,20 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse
     ) async {
+        if response.actionIdentifier == ReminderNotification.birthdaySnoozeAction,
+           let rawID = response.notification.request.content.userInfo[
+               ReminderNotification.birthdayIDKey
+           ] as? String,
+           let id = UUID(uuidString: rawID) {
+            await MainActor.run {
+                NotificationCenter.default.post(
+                    name: .snoozeBirthdayFromNotification,
+                    object: id
+                )
+            }
+            return
+        }
+
         guard let rawID = response.notification.request.content.userInfo[
             ReminderNotification.todoIDKey
         ] as? String,
@@ -199,3 +214,72 @@ extension Notification.Name {
     static let minimizeTodoWindow = Notification.Name("MinimizeTodoWindow")
     static let focusTodoInput = Notification.Name("FocusTodoInput")
 }
+#elseif os(iOS)
+import UIKit
+import UserNotifications
+
+@MainActor
+final class MobileAppDelegate: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        UNUserNotificationCenter.current().delegate = self
+        ReminderNotification.registerActions()
+        return true
+    }
+}
+
+extension MobileAppDelegate: UNUserNotificationCenterDelegate {
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
+        [.banner, .sound]
+    }
+
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse
+    ) async {
+        let userInfo = response.notification.request.content.userInfo
+
+        if response.actionIdentifier == ReminderNotification.birthdaySnoozeAction,
+           let rawID = userInfo[ReminderNotification.birthdayIDKey] as? String,
+           let id = UUID(uuidString: rawID) {
+            await MainActor.run {
+                NotificationCenter.default.post(
+                    name: .snoozeBirthdayFromNotification,
+                    object: id
+                )
+            }
+            return
+        }
+
+        guard let rawID = userInfo[ReminderNotification.todoIDKey] as? String,
+              let id = UUID(uuidString: rawID) else {
+            return
+        }
+
+        let name: Notification.Name?
+        switch response.actionIdentifier {
+        case ReminderNotification.doneAction:
+            name = .completeTodoFromNotification
+        case ReminderNotification.snoozeAction:
+            name = .snoozeTodoFromNotification
+        default:
+            name = nil
+        }
+
+        if let name {
+            await MainActor.run {
+                NotificationCenter.default.post(name: name, object: id)
+            }
+        }
+    }
+}
+
+extension Notification.Name {
+    static let focusTodoInput = Notification.Name("FocusTodoInput")
+}
+#endif

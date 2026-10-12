@@ -4,6 +4,9 @@ import UserNotifications
 protocol ReminderScheduling: Sendable {
     func schedule(for item: TodoItem) async
     func cancel(for item: TodoItem) async
+    func schedule(for birthday: BirthdayItem) async
+    func snooze(_ birthday: BirthdayItem, until date: Date) async
+    func cancel(for birthday: BirthdayItem) async
 }
 
 enum ReminderNotification {
@@ -11,6 +14,9 @@ enum ReminderNotification {
     static let doneAction = "TODO_DONE"
     static let snoozeAction = "TODO_SNOOZE"
     static let todoIDKey = "todoID"
+    static let birthdayCategory = "BIRTHDAY_REMINDER"
+    static let birthdaySnoozeAction = "BIRTHDAY_SNOOZE"
+    static let birthdayIDKey = "birthdayID"
 
     static func registerActions() {
         let done = UNNotificationAction(
@@ -29,7 +35,21 @@ enum ReminderNotification {
             intentIdentifiers: [],
             options: []
         )
-        UNUserNotificationCenter.current().setNotificationCategories([category])
+        let birthdaySnooze = UNNotificationAction(
+            identifier: birthdaySnoozeAction,
+            title: "Snooze 10 min",
+            options: []
+        )
+        let birthdayCategory = UNNotificationCategory(
+            identifier: birthdayCategory,
+            actions: [birthdaySnooze],
+            intentIdentifiers: [],
+            options: []
+        )
+        UNUserNotificationCenter.current().setNotificationCategories([
+            category,
+            birthdayCategory
+        ])
     }
 }
 
@@ -84,6 +104,58 @@ actor ReminderScheduler: ReminderScheduling {
         let requestIdentifiers = identifiers(for: item.id)
         center.removePendingNotificationRequests(withIdentifiers: requestIdentifiers)
         center.removeDeliveredNotifications(withIdentifiers: requestIdentifiers)
+    }
+
+    func schedule(for birthday: BirthdayItem) async {
+        do {
+            let authorized = try await center.requestAuthorization(options: [.alert, .sound])
+            guard authorized else { return }
+
+            let content = birthdayContent(for: birthday)
+            let trigger = UNCalendarNotificationTrigger(
+                dateMatching: birthday.notificationComponents(),
+                repeats: true
+            )
+            try await center.add(UNNotificationRequest(
+                identifier: "birthday.\(birthday.id.uuidString).yearly",
+                content: content,
+                trigger: trigger
+            ))
+        } catch {
+            // The birthday stays saved even if notification permission is unavailable.
+        }
+    }
+
+    func snooze(_ birthday: BirthdayItem, until date: Date) async {
+        guard date > Date() else { return }
+        do {
+            let content = birthdayContent(for: birthday)
+            var components = Calendar.current.dateComponents(
+                [.year, .month, .day, .hour, .minute],
+                from: date
+            )
+            components.timeZone = .current
+            let trigger = UNCalendarNotificationTrigger(
+                dateMatching: components,
+                repeats: false
+            )
+            try await center.add(UNNotificationRequest(
+                identifier: "birthday.\(birthday.id.uuidString).snooze",
+                content: content,
+                trigger: trigger
+            ))
+        } catch {
+            // Keep the yearly reminder even if this snooze could not be scheduled.
+        }
+    }
+
+    func cancel(for birthday: BirthdayItem) async {
+        let identifiers = [
+            "birthday.\(birthday.id.uuidString).yearly",
+            "birthday.\(birthday.id.uuidString).snooze"
+        ]
+        center.removePendingNotificationRequests(withIdentifiers: identifiers)
+        center.removeDeliveredNotifications(withIdentifiers: identifiers)
     }
 
     private func addOneOffPair(
@@ -175,6 +247,18 @@ actor ReminderScheduler: ReminderScheduling {
         return content
     }
 
+    private func birthdayContent(for birthday: BirthdayItem) -> UNMutableNotificationContent {
+        let content = UNMutableNotificationContent()
+        content.title = "Birthday reminder"
+        content.body = "Wish \(birthday.name) a happy birthday."
+        content.sound = .default
+        content.categoryIdentifier = ReminderNotification.birthdayCategory
+        content.userInfo = [
+            ReminderNotification.birthdayIDKey: birthday.id.uuidString
+        ]
+        return content
+    }
+
     private func identifiers(for id: UUID) -> [String] {
         [
             id.uuidString,
@@ -194,5 +278,8 @@ extension Notification.Name {
     )
     static let snoozeTodoFromNotification = Notification.Name(
         "SnoozeTodoFromNotification"
+    )
+    static let snoozeBirthdayFromNotification = Notification.Name(
+        "SnoozeBirthdayFromNotification"
     )
 }

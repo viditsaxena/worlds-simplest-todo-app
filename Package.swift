@@ -5,7 +5,8 @@ import PackageDescription
 let package = Package(
     name: "WorldsSimplestTodo",
     platforms: [
-        .macOS(.v14)
+        .macOS(.v14),
+        .iOS(.v17)
     ],
     products: [
         .executable(name: "WorldsSimplestTodo", targets: ["WorldsSimplestTodo"])
@@ -14,9 +15,13 @@ let package = Package(
         .executableTarget(
             name: "WorldsSimplestTodo",
             linkerSettings: [
-                .linkedFramework("Carbon"),
+                .linkedFramework("Carbon", .when(platforms: [.macOS])),
                 .linkedFramework("UserNotifications")
             ]
+        ),
+        .testTarget(
+            name: "WorldsSimplestTodoTests",
+            dependencies: ["WorldsSimplestTodo"]
         )
     ]
 )

@@ -1,9 +1,15 @@
 import SwiftUI
+#if os(macOS)
+import AppKit
+#elseif os(iOS)
+import UIKit
+#endif
 
 private enum TodoTab: String, CaseIterable, Identifiable {
     case today = "Today"
     case oneOff = "One-off"
     case recurring = "Recurring"
+    case birthdays = "Birthdays"
 
     var id: Self { self }
 }
@@ -25,6 +31,10 @@ struct TodoView: View {
         selectedTab == .today
     }
 
+    private var showingBirthdays: Bool {
+        selectedTab == .birthdays
+    }
+
     var body: some View {
         ZStack {
             VStack(spacing: 0) {
@@ -41,7 +51,13 @@ struct TodoView: View {
                 }
 
                 TimelineView(.periodic(from: .now, by: 30)) { timeline in
-                    if !store.hasItems(
+                    if showingBirthdays {
+                        if store.birthdays.isEmpty {
+                            emptyState
+                        } else {
+                            birthdayList(at: timeline.date)
+                        }
+                    } else if !store.hasItems(
                         recurring: showingRecurring,
                         today: showingToday,
                         at: timeline.date
@@ -59,8 +75,12 @@ struct TodoView: View {
                     .transition(.opacity)
             }
         }
+#if os(macOS)
         .frame(minWidth: 440, idealWidth: 520, minHeight: 480, idealHeight: 640)
-        .background(Color(nsColor: .windowBackgroundColor))
+#else
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+#endif
+        .background(Color.todoWindowBackground)
         .contentShape(Rectangle())
         .onTapGesture {
             inputIsFocused = true
@@ -128,9 +148,11 @@ struct TodoView: View {
                 .font(.system(size: 13, design: .rounded))
                 .foregroundStyle(.tertiary)
 
+#if os(macOS)
             Text("⌥N brings this window back anytime.")
                 .font(.system(size: 13, design: .rounded))
                 .foregroundStyle(.tertiary)
+#endif
 
             Spacer()
         }
@@ -236,7 +258,7 @@ struct TodoView: View {
                 .buttonStyle(.plain)
                 .padding(.trailing, 16)
                 .accessibilityLabel("Delete " + item.title)
-                .help("Delete recurring reminder")
+                .todoHelp("Delete recurring reminder")
             } else if selectedTab == .oneOff {
                 Button {
                     withAnimation(.easeOut(duration: 0.18)) {
@@ -253,7 +275,7 @@ struct TodoView: View {
                 .buttonStyle(.plain)
                 .padding(.trailing, 16)
                 .accessibilityLabel("Move " + item.title + " to Today")
-                .help("Move to Today")
+                .todoHelp("Move to Today")
             } else if selectedTab == .today {
                 Button {
                     withAnimation(.easeOut(duration: 0.18)) {
@@ -270,9 +292,67 @@ struct TodoView: View {
                 .buttonStyle(.plain)
                 .padding(.trailing, 16)
                 .accessibilityLabel("Move " + item.title + " back to One-off")
-                .help("Move back to One-off")
+                .todoHelp("Move back to One-off")
             }
         }
+    }
+
+    private func birthdayList(at date: Date) -> some View {
+        ScrollView {
+            LazyVStack(spacing: 0) {
+                ForEach(store.sortedBirthdays(after: date)) { birthday in
+                    birthdayRow(birthday, at: date)
+                }
+            }
+            .padding(.vertical, 8)
+        }
+    }
+
+    private func birthdayRow(_ birthday: BirthdayItem, at date: Date) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: "birthday.cake")
+                .font(.system(size: 20, weight: .regular))
+                .foregroundStyle(.pink)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(birthday.name)
+                    .font(.system(size: 18, design: .rounded))
+
+                Label {
+                    Text(birthday.nextDate(after: date), format: .dateTime
+                        .month(.wide)
+                        .day()
+                        .hour()
+                        .minute()
+                    )
+                } icon: {
+                    Image(systemName: "bell")
+                }
+                .font(.system(size: 12, weight: .medium, design: .rounded))
+                .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 0)
+
+            Button {
+                withAnimation(.easeOut(duration: 0.18)) {
+                    store.delete(birthday)
+                }
+                focusInput()
+            } label: {
+                Image(systemName: "trash")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Delete \(birthday.name)'s birthday")
+            .todoHelp("Delete birthday")
+        }
+        .padding(.leading, 28)
+        .padding(.trailing, 16)
+        .padding(.vertical, 15)
     }
 
     private var inputPlaceholder: String {
@@ -283,6 +363,8 @@ struct TodoView: View {
             "What are you working on today?"
         case .recurring:
             "Pay rent on the first of every month at 9 am"
+        case .birthdays:
+            "Mum's birthday is March 12"
         }
     }
 
@@ -294,6 +376,8 @@ struct TodoView: View {
             "Keep this list small."
         case .recurring:
             "Set it once. It comes back."
+        case .birthdays:
+            "Never miss a birthday."
         }
     }
 
@@ -305,6 +389,8 @@ struct TodoView: View {
             "Move a task here from One-off."
         case .recurring:
             "Try “Pay rent on the first of every month at 9 am”"
+        case .birthdays:
+            "Try “Mum's birthday is March 12 at 9 am”"
         }
     }
 
@@ -312,6 +398,21 @@ struct TodoView: View {
         let title = draft
         guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             draft = ""
+            return
+        }
+
+        if showingBirthdays {
+            let birthday = store.addBirthday(title)
+            guard birthday != nil else {
+                inputError = "Include a name and date, such as “Mum's birthday is March 12.”"
+                focusInput()
+                return
+            }
+
+            inputError = nil
+            draft = ""
+            selectedTab = .birthdays
+            focusInput()
             return
         }
 
@@ -360,5 +461,26 @@ struct TodoView: View {
                 celebrationID = nil
             }
         }
+    }
+}
+
+private extension Color {
+    static var todoWindowBackground: Color {
+#if os(macOS)
+        Color(nsColor: .windowBackgroundColor)
+#else
+        Color(uiColor: .systemBackground)
+#endif
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func todoHelp(_ text: String) -> some View {
+#if os(macOS)
+        help(text)
+#else
+        self
+#endif
     }
 }
