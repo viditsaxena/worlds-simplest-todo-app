@@ -14,6 +14,14 @@ enum TodoPriority: Int, Codable, CaseIterable, Identifiable, Sendable {
         case .low: "Low"
         }
     }
+
+    var shortTitle: String {
+        switch self {
+        case .high: "H"
+        case .medium: "M"
+        case .low: "L"
+        }
+    }
 }
 
 struct TodoItem: Codable, Identifiable, Equatable, Sendable {

@@ -308,11 +308,12 @@ struct TodoView: View {
                     }
                     focusInput()
                 } label: {
-                    Text(priority.title)
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    Text(priority.shortTitle)
+                        .font(.system(size: 9, weight: .semibold, design: .rounded))
                         .foregroundStyle(isSelected ? priority.tint : .secondary)
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 4)
+                        .frame(minWidth: 11)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
                         .background {
                             Capsule()
                                 .fill(isSelected
