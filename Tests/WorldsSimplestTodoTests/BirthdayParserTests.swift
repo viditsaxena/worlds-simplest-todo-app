@@ -50,3 +50,26 @@ func calculatesNextBirthday() throws {
     #expect(components.day == 21)
     #expect(components.hour == 9)
 }
+
+@Test("Old saved tasks default to medium priority")
+func decodesLegacyTaskPriority() throws {
+    let id = UUID()
+    let createdAt = Date(timeIntervalSince1970: 1_700_000_000)
+    let legacy: [String: Any] = [
+        "id": id.uuidString,
+        "title": "Legacy task",
+        "createdAt": createdAt.timeIntervalSinceReferenceDate,
+        "isToday": true
+    ]
+    let data = try JSONSerialization.data(withJSONObject: legacy)
+    let item = try JSONDecoder().decode(TodoItem.self, from: data)
+
+    #expect(item.priority == .medium)
+}
+
+@Test("Priority order is high, medium, low")
+func priorityOrder() {
+    #expect(TodoPriority.allCases == [.high, .medium, .low])
+    #expect(TodoPriority.high.rawValue > TodoPriority.medium.rawValue)
+    #expect(TodoPriority.medium.rawValue > TodoPriority.low.rawValue)
+}

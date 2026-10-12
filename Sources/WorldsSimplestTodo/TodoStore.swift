@@ -83,7 +83,8 @@ final class TodoStore: ObservableObject {
                 reminderDate: nextDate,
                 recurrence: recurrence,
                 hiddenUntil: nil,
-                isToday: false
+                isToday: false,
+                priority: item.priority
             )
             items[index] = advanced
             save()
@@ -163,6 +164,26 @@ final class TodoStore: ObservableObject {
         setToday(false, for: item)
     }
 
+    func setPriority(_ priority: TodoPriority, for item: TodoItem) {
+        guard !item.isRecurring,
+              let index = items.firstIndex(where: { $0.id == item.id }) else {
+            return
+        }
+
+        let current = items[index]
+        items[index] = TodoItem(
+            id: current.id,
+            title: current.title,
+            createdAt: current.createdAt,
+            reminderDate: current.reminderDate,
+            recurrence: current.recurrence,
+            hiddenUntil: current.hiddenUntil,
+            isToday: current.isToday,
+            priority: priority
+        )
+        save()
+    }
+
     func sortedItems(at date: Date, recurring: Bool, today: Bool = false) -> [TodoItem] {
         items.filter {
             let isInSelectedList = recurring
@@ -170,6 +191,10 @@ final class TodoStore: ObservableObject {
                 : !$0.isRecurring && $0.isToday == today
             return isInSelectedList && $0.isVisible(at: date)
         }.sorted { first, second in
+            if !recurring, first.priority != second.priority {
+                return first.priority.rawValue > second.priority.rawValue
+            }
+
             let firstIsOverdue = first.isOverdue(at: date)
             let secondIsOverdue = second.isOverdue(at: date)
 
@@ -202,7 +227,8 @@ final class TodoStore: ObservableObject {
             reminderDate: item.reminderDate,
             recurrence: item.recurrence,
             hiddenUntil: item.hiddenUntil,
-            isToday: isToday
+            isToday: isToday,
+            priority: item.priority
         )
         save()
     }
@@ -361,7 +387,8 @@ final class TodoStore: ObservableObject {
             reminderDate: Date().addingTimeInterval(10 * 60),
             recurrence: current.recurrence,
             hiddenUntil: nil,
-            isToday: current.isToday
+            isToday: current.isToday,
+            priority: current.priority
         )
         items[index] = snoozed
         save()

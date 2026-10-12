@@ -1,6 +1,22 @@
 import Foundation
 
-struct TodoItem: Codable, Identifiable, Equatable {
+enum TodoPriority: Int, Codable, CaseIterable, Identifiable, Sendable {
+    case high = 2
+    case medium = 1
+    case low = 0
+
+    var id: Self { self }
+
+    var title: String {
+        switch self {
+        case .high: "High"
+        case .medium: "Medium"
+        case .low: "Low"
+        }
+    }
+}
+
+struct TodoItem: Codable, Identifiable, Equatable, Sendable {
     let id: UUID
     let title: String
     let createdAt: Date
@@ -8,6 +24,7 @@ struct TodoItem: Codable, Identifiable, Equatable {
     let recurrence: RecurrenceRule?
     let hiddenUntil: Date?
     let isToday: Bool
+    let priority: TodoPriority
 
     init(
         id: UUID = UUID(),
@@ -16,7 +33,8 @@ struct TodoItem: Codable, Identifiable, Equatable {
         reminderDate: Date? = nil,
         recurrence: RecurrenceRule? = nil,
         hiddenUntil: Date? = nil,
-        isToday: Bool = false
+        isToday: Bool = false,
+        priority: TodoPriority = .medium
     ) {
         self.id = id
         self.title = title
@@ -25,6 +43,7 @@ struct TodoItem: Codable, Identifiable, Equatable {
         self.recurrence = recurrence
         self.hiddenUntil = hiddenUntil
         self.isToday = isToday
+        self.priority = priority
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -35,6 +54,7 @@ struct TodoItem: Codable, Identifiable, Equatable {
         case recurrence
         case hiddenUntil
         case isToday
+        case priority
     }
 
     init(from decoder: Decoder) throws {
@@ -46,6 +66,7 @@ struct TodoItem: Codable, Identifiable, Equatable {
         recurrence = try container.decodeIfPresent(RecurrenceRule.self, forKey: .recurrence)
         hiddenUntil = try container.decodeIfPresent(Date.self, forKey: .hiddenUntil)
         isToday = try container.decodeIfPresent(Bool.self, forKey: .isToday) ?? false
+        priority = try container.decodeIfPresent(TodoPriority.self, forKey: .priority) ?? .medium
     }
 
     func encode(to encoder: Encoder) throws {
@@ -57,6 +78,7 @@ struct TodoItem: Codable, Identifiable, Equatable {
         try container.encodeIfPresent(recurrence, forKey: .recurrence)
         try container.encodeIfPresent(hiddenUntil, forKey: .hiddenUntil)
         try container.encode(isToday, forKey: .isToday)
+        try container.encode(priority, forKey: .priority)
     }
 
     func isOverdue(at date: Date = Date()) -> Bool {

@@ -6,13 +6,14 @@ A deliberately tiny to-do app for Mac and iPhone.
 - Start typing immediately—no click required.
 - Use the **Today**, **One-off**, **Recurring**, and **Birthdays** tabs to keep different kinds of reminder separate. The app always opens on Today.
 - Move a one-off task into Today with the sun button. Move it back with the return arrow.
+- Set Today and One-off tasks to **High**, **Medium**, or **Low** priority. Both lists sort in that order, while preserving newest-first order within each priority.
 - Press **Return** to add an item.
 - Click a one-off item's circle to complete and remove it.
 - Completing a task triggers a short fireworks celebration.
 - Unfinished items are saved automatically.
 - Add a date and time in plain English—such as **Call Mum tomorrow at 6 pm**—to schedule a native notification automatically.
 - If the task is still unfinished ten minutes later, the app sends a second notification and bounces its Dock icon while running.
-- Overdue tasks are pinned to the top in red.
+- Overdue tasks stay red and move above other tasks with the same priority.
 - Reminder notifications include **Done** and **Snooze 10 min** actions.
 - Create monthly reminders in plain English, such as **Pay rent on the first of every month at 9 am**. If no time is included, the app uses 9:00 AM.
 - Completing a recurring item keeps it visible in black and advances its reminder to the next occurrence.

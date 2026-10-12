@@ -177,7 +177,7 @@ struct TodoView: View {
     private func taskRow(_ item: TodoItem, at date: Date) -> some View {
         let isOverdue = item.isOverdue(at: date)
 
-        return HStack(spacing: 0) {
+        return HStack(alignment: .top, spacing: 14) {
             Button {
                 withAnimation(.easeOut(duration: 0.18)) {
                     store.complete(item)
@@ -185,62 +185,63 @@ struct TodoView: View {
                 celebrate()
                 focusInput()
             } label: {
-                HStack(spacing: 14) {
-                    Image(systemName: "circle")
-                        .font(.system(size: 20, weight: .regular))
-                        .foregroundStyle(isOverdue ? .red : .secondary)
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(item.title)
-                            .font(.system(size: 18, design: .rounded))
-                            .foregroundStyle(isOverdue ? .red : .primary)
-                            .multilineTextAlignment(.leading)
-
-                        if let recurrence = item.recurrence {
-                            Label {
-                                HStack(spacing: 4) {
-                                    if isOverdue {
-                                        Text("Overdue ·")
-                                            .fontWeight(.bold)
-                                    }
-                                    Text(recurrence.scheduleDescription())
-                                }
-                            } icon: {
-                                Image(systemName: "arrow.triangle.2.circlepath")
-                            }
-                            .font(.system(size: 12, weight: .medium, design: .rounded))
-                            .foregroundStyle(isOverdue ? .red : .secondary)
-                        } else if let reminderDate = item.reminderDate {
-                            Label {
-                                HStack(spacing: 4) {
-                                    if isOverdue {
-                                        Text("Overdue ·")
-                                            .fontWeight(.bold)
-                                    }
-                                    Text(reminderDate, format: .dateTime
-                                        .weekday(.wide)
-                                        .month(.abbreviated)
-                                        .day()
-                                        .hour()
-                                        .minute()
-                                    )
-                                }
-                            } icon: {
-                                Image(systemName: "bell")
-                            }
-                            .font(.system(size: 12, weight: .medium, design: .rounded))
-                            .foregroundStyle(isOverdue ? .red : .secondary)
-                        }
-                    }
-
-                    Spacer(minLength: 0)
-                }
-                .padding(.leading, 28)
-                .padding(.vertical, 15)
-                .contentShape(Rectangle())
+                Image(systemName: "circle")
+                    .font(.system(size: 20, weight: .regular))
+                    .foregroundStyle(isOverdue ? .red : .secondary)
+                    .frame(width: 24, height: 24)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Complete " + item.title)
+
+            VStack(alignment: .leading, spacing: 7) {
+                Text(item.title)
+                    .font(.system(size: 18, design: .rounded))
+                    .foregroundStyle(isOverdue ? .red : .primary)
+                    .multilineTextAlignment(.leading)
+
+                if let recurrence = item.recurrence {
+                    Label {
+                        HStack(spacing: 4) {
+                            if isOverdue {
+                                Text("Overdue ·")
+                                    .fontWeight(.bold)
+                            }
+                            Text(recurrence.scheduleDescription())
+                        }
+                    } icon: {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                    }
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundStyle(isOverdue ? .red : .secondary)
+                } else if let reminderDate = item.reminderDate {
+                    Label {
+                        HStack(spacing: 4) {
+                            if isOverdue {
+                                Text("Overdue ·")
+                                    .fontWeight(.bold)
+                            }
+                            Text(reminderDate, format: .dateTime
+                                .weekday(.wide)
+                                .month(.abbreviated)
+                                .day()
+                                .hour()
+                                .minute()
+                            )
+                        }
+                    } icon: {
+                        Image(systemName: "bell")
+                    }
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundStyle(isOverdue ? .red : .secondary)
+                }
+
+                if !item.isRecurring {
+                    priorityControls(for: item)
+                }
+            }
+
+            Spacer(minLength: 0)
 
             if item.isRecurring {
                 Button {
@@ -256,7 +257,6 @@ struct TodoView: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .padding(.trailing, 16)
                 .accessibilityLabel("Delete " + item.title)
                 .todoHelp("Delete recurring reminder")
             } else if selectedTab == .oneOff {
@@ -273,7 +273,6 @@ struct TodoView: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .padding(.trailing, 16)
                 .accessibilityLabel("Move " + item.title + " to Today")
                 .todoHelp("Move to Today")
             } else if selectedTab == .today {
@@ -290,9 +289,46 @@ struct TodoView: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .padding(.trailing, 16)
                 .accessibilityLabel("Move " + item.title + " back to One-off")
                 .todoHelp("Move back to One-off")
+            }
+        }
+        .padding(.leading, 28)
+        .padding(.trailing, 16)
+        .padding(.vertical, 15)
+    }
+
+    private func priorityControls(for item: TodoItem) -> some View {
+        HStack(spacing: 6) {
+            ForEach(TodoPriority.allCases) { priority in
+                let isSelected = item.priority == priority
+                Button {
+                    withAnimation(.easeOut(duration: 0.18)) {
+                        store.setPriority(priority, for: item)
+                    }
+                    focusInput()
+                } label: {
+                    Text(priority.title)
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundStyle(isSelected ? priority.tint : .secondary)
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 4)
+                        .background {
+                            Capsule()
+                                .fill(isSelected
+                                    ? priority.tint.opacity(0.14)
+                                    : Color.secondary.opacity(0.08))
+                        }
+                        .overlay {
+                            Capsule()
+                                .stroke(
+                                    isSelected ? priority.tint.opacity(0.55) : .clear,
+                                    lineWidth: 1
+                                )
+                        }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Set \(item.title) priority to \(priority.title)")
             }
         }
     }
@@ -471,6 +507,16 @@ private extension Color {
 #else
         Color(uiColor: .systemBackground)
 #endif
+    }
+}
+
+private extension TodoPriority {
+    var tint: Color {
+        switch self {
+        case .high: .red
+        case .medium: .orange
+        case .low: .secondary
+        }
     }
 }
 
