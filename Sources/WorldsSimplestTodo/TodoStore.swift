@@ -184,6 +184,38 @@ final class TodoStore: ObservableObject {
         save()
     }
 
+    @discardableResult
+    func updateTitle(_ rawTitle: String, for itemID: UUID) -> Bool {
+        let title = rawTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty,
+              let index = items.firstIndex(where: { $0.id == itemID }) else {
+            return false
+        }
+
+        let current = items[index]
+        guard title != current.title else { return true }
+
+        let updated = TodoItem(
+            id: current.id,
+            title: title,
+            createdAt: current.createdAt,
+            reminderDate: current.reminderDate,
+            recurrence: current.recurrence,
+            hiddenUntil: current.hiddenUntil,
+            isToday: current.isToday,
+            priority: current.priority
+        )
+        items[index] = updated
+        save()
+
+        Task {
+            await reminders.cancel(for: current)
+            await reminders.schedule(for: updated)
+        }
+        scheduleDockBounce(for: updated)
+        return true
+    }
+
     func sortedItems(at date: Date, recurring: Bool, today: Bool = false) -> [TodoItem] {
         items.filter {
             let isInSelectedList = recurring

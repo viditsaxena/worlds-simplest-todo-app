@@ -21,7 +21,10 @@ struct TodoView: View {
     @State private var inputError: String?
     @State private var celebrationID: Int?
     @State private var celebrationSequence = 0
+    @State private var editingItemID: UUID?
+    @State private var editingDraft = ""
     @FocusState private var inputIsFocused: Bool
+    @FocusState private var itemEditorIsFocused: Bool
 
     private var showingRecurring: Bool {
         selectedTab == .recurring
@@ -83,7 +86,9 @@ struct TodoView: View {
         .background(Color.todoWindowBackground)
         .contentShape(Rectangle())
         .onTapGesture {
-            inputIsFocused = true
+            if editingItemID == nil {
+                inputIsFocused = true
+            }
         }
         .onAppear {
             focusInput()
@@ -195,10 +200,30 @@ struct TodoView: View {
             .accessibilityLabel("Complete " + item.title)
 
             VStack(alignment: .leading, spacing: 7) {
-                Text(item.title)
-                    .font(.system(size: 18, design: .rounded))
-                    .foregroundStyle(isOverdue ? .red : .primary)
-                    .multilineTextAlignment(.leading)
+                if editingItemID == item.id {
+                    TextField("", text: $editingDraft)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 18, design: .rounded))
+                        .foregroundStyle(isOverdue ? .red : .primary)
+                        .focused($itemEditorIsFocused)
+                        .onSubmit(finishEditing)
+                        .onChange(of: itemEditorIsFocused) { wasFocused, isFocused in
+                            if wasFocused, !isFocused {
+                                finishEditing()
+                            }
+                        }
+                        .accessibilityLabel("Edit " + item.title)
+                } else {
+                    Text(item.title)
+                        .font(.system(size: 18, design: .rounded))
+                        .foregroundStyle(isOverdue ? .red : .primary)
+                        .multilineTextAlignment(.leading)
+                        .contentShape(Rectangle())
+                        .onTapGesture(count: 2) {
+                            beginEditing(item)
+                        }
+                        .accessibilityHint("Double-click to edit")
+                }
 
                 if let recurrence = item.recurrence {
                     Label {
@@ -479,6 +504,42 @@ struct TodoView: View {
     }
 
     private func focusInput() {
+        if editingItemID != nil {
+            finishEditing()
+            return
+        }
+
+        DispatchQueue.main.async {
+            inputIsFocused = true
+        }
+    }
+
+    private func beginEditing(_ item: TodoItem) {
+        editingDraft = item.title
+        editingItemID = item.id
+        inputIsFocused = false
+
+        DispatchQueue.main.async {
+            itemEditorIsFocused = true
+#if os(macOS)
+            DispatchQueue.main.async {
+                (NSApp.keyWindow?.firstResponder as? NSTextView)?.selectAll(nil)
+            }
+#endif
+        }
+    }
+
+    private func finishEditing() {
+        guard let itemID = editingItemID else { return }
+
+        let saved = store.updateTitle(editingDraft, for: itemID)
+        if !saved,
+           let item = store.items.first(where: { $0.id == itemID }) {
+            editingDraft = item.title
+        }
+
+        editingItemID = nil
+        itemEditorIsFocused = false
         DispatchQueue.main.async {
             inputIsFocused = true
         }
